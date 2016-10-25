@@ -9,7 +9,7 @@
           {% for place in places %}
             <article>
               <a class="name" href="{{ place['url'] }}" target="_blank">{{ place['name'] }}</a>
-              <p class="walking-distance">{{ place['time'] }} min away</p>
+              <p class="walking-distance">{{ place['address'] }} </p>
             </article>
           {% endfor %}
         </div>
@@ -44,7 +44,7 @@
   <script>
     var planes = [
       {% for place in places %}
-        ["<h3><a href='{{ place['url'] }}' target='_blank'>{{ place['name'] }}</a></h3> <p>{{ place['time'] }} min away</p>", {{ place['lat'] }}, {{ place['lng'] }} ],
+        ["<h3><a href='{{ place['url'] }}' target='_blank'>{{ place['name'] }}</a></h3> <p>{{ place['address'] }} </p>", {{ place['lat'] }}, {{ place['lng'] }} ],
       {% endfor %}
     ];
 

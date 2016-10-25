@@ -44,8 +44,9 @@ class Place(object):
 
   def query(self, address):
     lat, lng = self.address_to_latlng(address)
+    key = 'AIzaSyAMy9cOSxb61112OjzIyr0OfItQB0DD9Ck'
     
-    query_url = 'https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gsradius=5000&gscoord={0}%7C{1}&gslimit=20&format=json'.format(lat, lng)
+    query_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={0},{1}&radius=1000&type=cafe&key={2}'.format(lat, lng, key)
     g = urllib2.urlopen(query_url)
     results = g.read()
     g.close()
@@ -53,19 +54,16 @@ class Place(object):
     data = json.loads(results)
     
     places = []
-    for place in data['query']['geosearch']:
-      name = place['title']
-      meters = place['dist']
-      lat = place['lat']
-      lng = place['lon']
-
-      wiki_url = self.wiki_path(name)
-      walking_time = self.meters_to_walking_time(meters)
+    for place in data['results']:
+      name = place['name']
+      address = place['vicinity']
+      lat = place['geometry']['location']['lat']
+      lng = place['geometry']['location']['lng']
 
       d = {
         'name': name,
-        'url': wiki_url,
-        'time': walking_time,
+        'url': 'https://www.yelp.com/search?find_desc=' + name + '&find_loc=' + address,
+        'address': address,
         'lat': lat,
         'lng': lng
       }
