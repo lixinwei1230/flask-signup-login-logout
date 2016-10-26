@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 from models import db, User, Minions, Place
 from forms import AddressForm
-from job import myJob
 import logging
 import json
 
