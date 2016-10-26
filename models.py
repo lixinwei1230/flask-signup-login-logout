@@ -10,15 +10,13 @@ db = SQLAlchemy()
 
 class User(db.Model):
   __tablename__ = 'users'
-  uid = db.Column(db.Integer, primary_key = True)
-  firstname = db.Column(db.String(100))
-  lastname = db.Column(db.String(100))
+  uid = db.Column(db.Integer, primary_key=True)
   email = db.Column(db.String(120), unique=True)
-  pwdhash = db.Column(db.String(54))
+  username = db.Column(db.String(100))
+  pwdhash = db.Column(db.String(100))
 
-  def __init__(self, firstname, lastname, email, password):
-    self.firstname = firstname.title()
-    self.lastname = lastname.title()
+  def __init__(self, email, username, password):
+    self.username = username.title()
     self.email = email.lower()
     self.set_password(password)
      
@@ -27,6 +25,23 @@ class User(db.Model):
 
   def check_password(self, password):
     return check_password_hash(self.pwdhash, password)
+
+class Minions(db.Model):
+  __tablename__ = 'minions'
+  email = db.Column(db.String(100), primary_key=True)
+  happiness = db.Column(db.Integer)
+  hungry = db.Column(db.Integer)
+
+  def __init__(self, email, happiness, hungry):
+    self.email = email.lower()
+    self.happiness = happiness
+    self.hungry = hungry
+
+  def get_happiness(self):
+    return self.happiness
+
+  def get_hungry(self):
+    return self.hungry
 
 # p = Place()
 # places = p.query("1600 Amphitheater Parkway Mountain View CA")

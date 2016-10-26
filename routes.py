@@ -1,8 +1,14 @@
 from flask import Flask, render_template, request, session, redirect, url_for
-from models import db, User, Place
-from forms import SignupForm, LoginForm, AddressForm
+from models import db, User, Minions, Place
+from forms import AddressForm
+from job import myJob
+import logging
+import json
 
 app = Flask(__name__)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/learningflask'
 db.init_app(app)
@@ -17,60 +23,87 @@ def index():
 def about():
   return render_template("about.html")
 
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
-  if 'email' in session:
-    return redirect(url_for('home'))
-
-  form = SignupForm()
-
-  if request.method == "POST":
-    if form.validate() == False:
-      return render_template('signup.html', form=form)
-    else:
-      newuser = User(form.first_name.data, form.last_name.data, form.email.data, form.password.data)
-      db.session.add(newuser)
-      db.session.commit()
-
-      session['email'] = newuser.email
-      return redirect(url_for('home'))
-
-  elif request.method == "GET":
-    return render_template('signup.html', form=form)
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
-  if 'email' in session:
-    return redirect(url_for('home'))
-
-  form = LoginForm()
 
   if request.method == "POST":
-    if form.validate() == False:
-      return render_template("login.html", form=form)
+
+    #if 'email' in session:
+      #return '{"movie": "failed!"}'
+
+    logger.info(request.get_json())
+    email = request.get_json()['email'].lower()
+    password = request.get_json()['password']
+
+    user = User.query.filter_by(email=email).first()
+    if user is not None and user.check_password(password):
+      session['email'] = email
+
+      minion = Minions.query.filter_by(email=email).first()
+      happiness = minion.get_happiness()
+      hungry = minion.get_hungry()
+
+      status = {'status': 'ok!', 'happiness': happiness, 'hungry': hungry}
+      logger.info('login success!')
+      logger.info(status)
+      return json.dumps(status)
+
+
     else:
-      email = form.email.data 
-      password = form.password.data 
+      logger.info('login failed!')
+      return '{"status": "failed!"}'
 
-      user = User.query.filter_by(email=email).first()
-      if user is not None and user.check_password(password):
-        session['email'] = form.email.data 
-        return redirect(url_for('home'))
-      else:
-        return redirect(url_for('login'))
+@app.route("/status", methods=["GET", "POST"])
+def status():
 
-  elif request.method == 'GET':
-    return render_template('login.html', form=form)
+  if request.method == "POST":
+
+    if 'email' in session:
+      logger.info(request.get_json())
+      status = request.get_json()['loginStatus']
+      if status == 'ok':
+        newMinion = Minions(session['email'], 100, 0)
+        db.session.add(newMinion)
+        db.session.commit()
+        return '{"status": "ok!"}'
+
+  elif request.method == "GET":
+
+    if 'email' in session:
+      minion = Minions.query.filter_by(email=session['email']).first()
+      happiness = minion.get_happiness()
+      hungry = minion.get_hungry()
+
+      status = {'happiness': happiness, 'hungry': hungry}
+      logger.info('login success!')
+      logger.info(status)
+      return json.dumps(status)
 
 @app.route("/logout")
 def logout():
   session.pop('email', None)
   return redirect(url_for('index'))
 
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+  if request.method == 'POST':
+    logger.info(request.get_json())
+    email = request.get_json()['email']
+    username = request.get_json()['username']
+    password = request.get_json()['password']
+
+    newuser = User(email, username, password)
+    db.session.add(newuser)
+    db.session.commit()
+
+    session['email'] = newuser.email
+
+    logger.info('post success')
+    status = '{"status": "ok!"}'
+    return status
+
 @app.route("/home", methods=["GET", "POST"])
 def home():
-  if 'email' not in session:
-    return redirect(url_for('login'))
 
   form = AddressForm()
 
@@ -96,4 +129,4 @@ def home():
     return render_template("home.html", form=form, my_coordinates=my_coordinates, places=places)
 
 if __name__ == "__main__":
-  app.run(debug=True)
+  app.run(host='0.0.0.0', port=9000, debug=False)
