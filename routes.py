@@ -2,7 +2,10 @@ from flask import Flask, render_template, request, session, redirect, url_for
 from models import db, User, Minions, Place
 from forms import AddressForm
 import logging
+import requests
 import json
+import psycopg2
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -77,6 +80,56 @@ def status():
       logger.info('login success!')
       logger.info(status)
       return json.dumps(status)
+
+@app.route("/transaction", methods=["GET", "POST"])
+def transaction():
+
+  if request.method == "GET":
+
+    logger.info('this is get request')
+
+    #if 'email' in session:
+    #loginemail = session['email']
+    conn = psycopg2.connect(database="learningflask", user="SuM_", host="127.0.0.1", port="5432")
+    print("opened database successfully")
+    cur = conn.cursor()
+
+    headers = {'client_id': '580fe188a753b93289626cc5', 'public_key': '800260ed5fd41898dfeec0ae89a128',
+               'secret': '7252ac63e7fd1e2a367384e14248b4', 'username': 'plaid_test', 'password': 'plaid_good',
+               'type': 'wells'}
+    response = requests.post("https://tartan.plaid.com/connect", data=headers)
+    json_data = json.loads(response.text);
+    account = json_data['accounts'][0]['_user']
+    # print(json_data)
+    for i in range(len(json_data['transactions'])):
+      location = json_data['transactions'][i]['name']
+      transaction = json_data['transactions'][i]
+      tran_id = json_data['transactions'][i]['_id']
+      if 'category_id' not in transaction:
+        print 'not in this data'
+      else:
+        category_id = int(transaction['category_id'])
+        if category_id >= 13005000 and category_id <= 13005059:
+          # 13005012 Papa Johns Pizza  13005043  Gregorys Coffee  13005043 Krankies Coffee
+          try:
+            cur.execute('INSERT INTO transaction (transaction_id, email, bank_account, shop_name, amount, checked) VALUES (%s, %s, %s, %s, %s, %s)', (tran_id, 'xinweili@usc.edu', 'plaid_test', transaction['name'], int(transaction['amount']), int(0)))
+          except psycopg2.IntegrityError:
+            conn.rollback()
+          else:
+            conn.commit()
+    rows = cur.execute("""SELECT shop_name, SUM(amount) FROM transaction WHERE checked=1 GROUP BY shop_name""")
+    columns = ('shop_name', 'amount')
+    result = []
+    for row in cur.fetchall():
+      result.append(dict(zip(columns, row)))
+
+    final_json = json.dumps(result, indent=2)
+
+    cur.execute('UPDATE transaction SET checked=1 WHERE checked=0')
+    conn.commit()
+    conn.close()
+    return final_json
+
 
 @app.route("/logout")
 def logout():
